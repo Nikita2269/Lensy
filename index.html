@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lensy — Instant On-Screen OCR Translator for macOS</title>
+  <meta name="description" content="Translate any word on your screen with a single hotkey (⌥T). Powered by on-device Apple Vision OCR and ultra-fast Groq LLM. Free for macOS.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover: rgba(255, 255, 255, 0.06);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --purple: #818cf8;
+      --radius-lg: 20px;
+      --radius-md: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Subtle background glow */
+    .glow-sphere {
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, rgba(129, 140, 248, 0.08) 40%, transparent 70%);
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header / Nav */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 32px 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 1.3rem;
+      letter-spacing: -0.02em;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 16px rgba(56, 189, 248, 0.3);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 60px 0 40px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: #7dd3fc;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 5.5vw, 4rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      background: linear-gradient(to bottom right, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      color: var(--text-muted);
+      max-width: 640px;
+      margin: 0 auto 36px;
+    }
+
+    .cta-group {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #fff;
+      color: #000;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 14px 28px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(255, 255, 255, 0.25);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      font-weight: 600;
+      font-size: 1rem;
+      padding: 14px 24px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: var(--card-hover);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .hero-note {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 14px;
+    }
+
+    /* Video Showcase */
+    .showcase {
+      margin: 48px auto;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      background: #000;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+      position: relative;
+    }
+
+    .showcase video {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* How It Works Grid */
+    .section-title {
+      text-align: center;
+      margin: 80px 0 40px;
+    }
+
+    .section-title h2 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-bottom: 60px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-3px);
+    }
+
+    .card-icon {
+      font-size: 1.8rem;
+      margin-bottom: 16px;
+      display: inline-block;
+    }
+
+    .card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* Steps Section */
+    .steps {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      margin: 40px 0;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .step-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .step-num {
+      width: 32px;
+      height: 32px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-content h4 {
+      font-size: 1.1rem;
+      margin-bottom: 4px;
+      color: #fff;
+    }
+
+    .step-content p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 40px 0;
+      margin-top: 80px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--text-main);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 0.9em;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="glow-sphere"></div>
+
+  <div class="container">
+    <header>
+      <a href="#" class="logo">
+        <div class="logo-icon">🔍</div>
+        <span>Lensy</span>
+      </a>
+      <div class="nav-links">
+        <a href="#how-it-works" class="nav-link">How it works</a>
+        <a href="#install" class="nav-link">Installation</a>
+        <a href="https://github.com/Nikita2269/Lensy" class="nav-link">GitHub</a>
+        <a href="https://t.me/lensy_app" class="nav-link">Telegram</a>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero Section -->
+      <section class="hero">
+        <div class="badge">macOS 14 Sonoma or newer • Universal Binary</div>
+        <h1>Translate anything on screen<br>with a single hotkey.</h1>
+        <p>No window switching, no copying, no typing. Hover cursor over any word in PDFs, subtitles, games or terminals, press <code>⌥T</code>, and get an instant AI linguistic card.</p>
+        
+        <div class="cta-group">
+          <a href="https://github.com/Nikita2269/Lensy/releases/download/v1.0.0-beta/Lensy-1.0.0-beta.dmg" class="btn-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Lensy Beta (DMG)
+          </a>
+          <a href="https://github.com/Nikita2269/Lensy" class="btn-secondary">
+            View on GitHub
+          </a>
+        </div>
+        <div class="hero-note">100% Free & Open-input (BYOK). Native Apple Silicon & Intel.</div>
+      </section>
+
+      <!-- Video Demo Showcase -->
+      <section class="showcase">
+        <video autoplay loop muted playsinline poster="media/media_EN/Screenshot 2026-08-28 at 15.39.55.png">
+          <source src="media/media_EN/lensy_video.mov" type="video/quicktime">
+          <source src="media/media_EN/lensy_video.mov" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      </section>
+
+      <!-- Features Grid -->
+      <section id="how-it-works">
+        <div class="section-title">
+          <h2>Built for reading and learning</h2>
+          <p>Designed to keep you in the flow without interrupting your focus.</p>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <div class="card-icon">⚡️</div>
+            <h3>Zero Selection Needed</h3>
+            <p>Hover cursor over any word and press <code>⌥T</code>. Works over video subtitles (VLC/IINA), PDFs in Preview, terminal output, images, or protected app interfaces.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">🔒</div>
+            <h3>100% On-Device OCR</h3>
+            <p>ScreenCaptureKit captures a tight crop around your cursor, and Apple Vision runs OCR locally on your Mac's Neural Engine. Your desktop screen image never leaves your machine.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">📖</div>
+            <h3>Linguistic Card</h3>
+            <p>Not just a flat translation: get pronunciation, CEFR level (A1–C2), word frequency, register (informal/formal/slang), and practical collocation sentences.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">💬</div>
+            <h3>"Ask AI" in Context</h3>
+            <p>Encountered a complex phrase or idiom? Click "Ask AI" right inside the HUD panel to get contextual nuances answered without leaving the app.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">🗂️</div>
+            <h3>Local History (⌥H)</h3>
+            <p>All your lookups are saved in an on-device SQLite database. Search past queries anytime so you never have to re-translate recurring technical jargon.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">🔑</div>
+            <h3>Secure BYOK Model</h3>
+            <p>Use your own free Groq API key (response times in 2–4s). The key is stored securely in your macOS system Keychain, never in plain text.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- How to Install -->
+      <section id="install" class="steps">
+        <h2 style="margin-bottom: 24px;">Installation & Setup</h2>
+        
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>Download and drag to Applications</h4>
+            <p>Download <code>Lensy-1.0.0-beta.dmg</code> and drag the Lensy icon into your Mac's Applications folder.</p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>First launch (Right-click → Open)</h4>
+            <p>Because Lensy is currently in independent beta without Apple's $99/yr notarization, macOS will show a prompt on first launch. Simply <strong>Right-click the app → choose Open</strong>.</p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Grant permissions & add free Groq key</h4>
+            <p>Grant Accessibility (for hotkeys) and Screen Recording (for cursor OCR crop). Enter your free Groq API key from <a href="https://console.groq.com" target="_blank" style="color: #38bdf8;">console.groq.com</a> into Settings. Done!</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Lensy is a free, independent project for macOS. Built with Swift, SwiftUI & Apple Vision.</p>
+      <p style="margin-top: 8px;">
+        <a href="https://github.com/Nikita2269/Lensy">GitHub Releases</a> • 
+        <a href="https://t.me/lensy_app">Telegram Channel</a>
+      </p>
+    </footer>
+  </div>
+
+</body>
+</html>
